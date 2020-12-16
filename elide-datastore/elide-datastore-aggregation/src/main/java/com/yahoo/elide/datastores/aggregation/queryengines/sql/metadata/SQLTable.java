@@ -18,6 +18,8 @@ import com.yahoo.elide.datastores.aggregation.query.MetricProjection;
 import com.yahoo.elide.datastores.aggregation.query.Queryable;
 import com.yahoo.elide.datastores.aggregation.query.TimeDimensionProjection;
 import com.yahoo.elide.datastores.aggregation.queryengines.sql.ConnectionDetails;
+import com.yahoo.elide.datastores.aggregation.queryengines.sql.annotation.FromSubquery;
+import com.yahoo.elide.datastores.aggregation.queryengines.sql.annotation.FromTable;
 import com.yahoo.elide.datastores.aggregation.queryengines.sql.query.SQLColumnProjection;
 import com.yahoo.elide.datastores.aggregation.queryengines.sql.query.SQLDimensionProjection;
 import com.yahoo.elide.datastores.aggregation.queryengines.sql.query.SQLMetricProjection;
@@ -38,15 +40,34 @@ public class SQLTable extends Table implements Queryable {
     @Getter
     private ConnectionDetails connectionDetails;
 
+    private String definition;
+
     public SQLTable(Class<?> cls,
                     EntityDictionary dictionary,
                     ConnectionDetails connectionDetails) {
         super(cls, dictionary);
         this.connectionDetails = connectionDetails;
+
+        this.definition = cls.isAnnotationPresent(FromSubquery.class)
+                ? "(" + cls.getAnnotation(FromSubquery.class).sql() + ")"
+                : cls.isAnnotationPresent(FromTable.class)
+                ? applyQuotes(cls.getAnnotation(FromTable.class).name())
+                : cls.isAnnotationPresent(javax.persistence.Table.class)
+                ? applyQuotes(cls.getAnnotation(javax.persistence.Table.class).name())
+                : applyQuotes(getName());
     }
 
     public SQLTable(Class<?> cls, EntityDictionary dictionary) {
-        super(cls, dictionary);
+        this(cls, dictionary, null);
+    }
+
+    @Override
+    public String getDefinition() {
+        return definition;
+    }
+
+    private String applyQuotes(String str) {
+        return SQLReferenceTable.applyQuotes(str, connectionDetails.getDialect());
     }
 
     @Override

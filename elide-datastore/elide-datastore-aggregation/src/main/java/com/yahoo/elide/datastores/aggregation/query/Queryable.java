@@ -44,6 +44,14 @@ public interface Queryable {
     }
 
     /**
+     * Returns the definition of this query queryable.
+     * @return the definition.
+     */
+    default String getDefinition() {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * The version of the queryable
      * @return The version
      */

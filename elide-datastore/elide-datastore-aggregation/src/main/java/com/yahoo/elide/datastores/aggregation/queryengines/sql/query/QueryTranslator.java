@@ -6,7 +6,6 @@
 package com.yahoo.elide.datastores.aggregation.queryengines.sql.query;
 
 import com.yahoo.elide.core.Path;
-import com.yahoo.elide.core.dictionary.EntityDictionary;
 import com.yahoo.elide.core.exceptions.BadRequestException;
 import com.yahoo.elide.core.filter.FilterTranslator;
 import com.yahoo.elide.core.filter.expression.FilterExpression;
@@ -19,8 +18,6 @@ import com.yahoo.elide.datastores.aggregation.query.ColumnProjection;
 import com.yahoo.elide.datastores.aggregation.query.Query;
 import com.yahoo.elide.datastores.aggregation.query.QueryVisitor;
 import com.yahoo.elide.datastores.aggregation.query.Queryable;
-import com.yahoo.elide.datastores.aggregation.queryengines.sql.annotation.FromSubquery;
-import com.yahoo.elide.datastores.aggregation.queryengines.sql.annotation.FromTable;
 import com.yahoo.elide.datastores.aggregation.queryengines.sql.dialects.SQLDialect;
 import com.yahoo.elide.datastores.aggregation.queryengines.sql.metadata.SQLReferenceTable;
 
@@ -39,12 +36,10 @@ import java.util.stream.Stream;
 public class QueryTranslator implements QueryVisitor<SQLQuery.SQLQueryBuilder> {
 
     private final SQLReferenceTable referenceTable;
-    private final EntityDictionary dictionary;
     private final SQLDialect dialect;
 
     public QueryTranslator(SQLReferenceTable referenceTable, SQLDialect sqlDialect) {
         this.referenceTable = referenceTable;
-        this.dictionary = referenceTable.getDictionary();
         this.dialect = sqlDialect;
     }
 
@@ -111,16 +106,11 @@ public class QueryTranslator implements QueryVisitor<SQLQuery.SQLQueryBuilder> {
     public SQLQuery.SQLQueryBuilder visitQueryable(Queryable table) {
         SQLQuery.SQLQueryBuilder builder = SQLQuery.builder();
 
-        Class<?> tableCls = dictionary.getEntityClass(table.getName(), table.getVersion());
         String tableAlias = applyQuotes(table.getAlias());
 
-        String tableStatement = tableCls.isAnnotationPresent(FromSubquery.class)
-                ? "(" + tableCls.getAnnotation(FromSubquery.class).sql() + ")"
-                : tableCls.isAnnotationPresent(FromTable.class)
-                ? applyQuotes(tableCls.getAnnotation(FromTable.class).name())
-                : applyQuotes(table.getName());
+        String tableDefinition = table.getDefinition();
 
-        return builder.fromClause(String.format("%s AS %s", tableStatement, tableAlias));
+        return builder.fromClause(String.format("%s AS %s", tableDefinition, tableAlias));
     }
 
     /**
