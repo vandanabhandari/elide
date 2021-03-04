@@ -739,10 +739,21 @@ public class PersistentResource<T> implements com.yahoo.elide.security.Persisten
         final Set<PersistentResource> newResources = getRequestScope().getNewPersistentResources();
 
         for (PersistentResource persistentResource : resourceIdentifiers) {
-            if (!newResources.contains(persistentResource)
-                    && !lineage.getRecord(persistentResource.getType()).contains(persistentResource)) {
-                checkPermission(SharePermission.class, persistentResource);
+
+            //New resources are exempt from SharePermission checks
+            if (newResources.contains(persistentResource)
+                //This allows nested object hierarchies of non-shareables that are created in more than one
+                //client request. A & B are created in one request and C is created in a subsequent request).
+                //reference B because B & C are part of the same non-shareable object hierarchy.
+                //To do this, the client must be able to read B (since they navigated through it) and also
+                //update the relationship that links B & C.
+                || (! dictionary.isShareable(getResourceClass())
+                    && persistentResource.equals(lineage.getParent()))) {
+                continue;
             }
+
+            checkPermission(SharePermission.class, persistentResource);
+
         }
     }
 
